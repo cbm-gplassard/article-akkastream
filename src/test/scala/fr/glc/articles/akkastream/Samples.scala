@@ -35,7 +35,7 @@ class Samples extends AnyWordSpec with Matchers {
     }
 
     "be async" in {
-      val source = Source.future(Future { Thread.sleep(100); 1})
+      val source = Source.fromFuture(Future { Thread.sleep(100); 1})
 
       Await.result(source.runWith(sink), 1 second) must equal(Seq(1))
     }

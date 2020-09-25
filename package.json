@@ -1,0 +1,23 @@
+{
+  "name": "article-akkastream",
+  "version": "0.1.0",
+  "bin": {
+    "cdk": "bin/cdk.js"
+  },
+  "scripts": {
+    "build": "node_modules/.bin/tsc",
+    "watch": "node_modules/.bin/tsc -w",
+    "cdk": "node_modules/.bin/cdk"
+  },
+  "devDependencies": {
+    "@types/node": "10.17.27",
+    "aws-cdk": "1.64.0",
+    "ts-node": "^8.1.0",
+    "typescript": "~3.9.7"
+  },
+  "dependencies": {
+    "@aws-cdk/aws-dynamodb": "1.64.0",
+    "@aws-cdk/core": "1.64.0",
+    "source-map-support": "^0.5.16"
+  }
+}
