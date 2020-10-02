@@ -1,9 +1,11 @@
 package fr.glc.articles.akkastream
 
-import java.time.ZoneId
+import java.time.{Duration, Instant, ZoneId}
 
 import akka.actor.ActorSystem
 import com.github.matsluni.akkahttpspi.AkkaHttpClient
+import fr.glc.articles.akkastream.services.DynamoUpdater
+import fr.glc.articles.akkastream.services.DynamoInserter
 import izanami.ClientConfig
 import izanami.IzanamiBackend.SseBackend
 import izanami.scaladsl.IzanamiClient
@@ -46,19 +48,25 @@ object Main {
 
     val dynamoUpdater = new DynamoUpdater(izanami, actorSystem, dynamodb)
     val dynamoInserter = new DynamoInserter()(actorSystem, dynamodb)
-    //val result = dynamoUpdater.updateDynamo("akkastream", None)
-    val result = dynamoInserter.insertItems("akkastream", 100_000)
+
+    val start = Instant.now()
+
+    //val previousState = Some(UpdateState(180, 81000, Some(Map("pk" -> AttributeValue.builder().s("50589").build()))))
+    val previousState = None
+    val result = dynamoUpdater.updateDynamo("akkastream", previousState, 100)
+    //val result = dynamoInserter.insertItems("akkastream", 100_000, 1_000)
 
     result
       .onComplete {
         case Success(value) =>
-          println(s"Success ${value}")
+          val duration = Duration.between(start, Instant.now())
+          println(s"Success $value in $duration")
           Thread.sleep(5000)
           actorSystem.terminate()
 
         case Failure(error) =>
           error.printStackTrace()
-          println(s"Error ${error}")
+          println(s"Error $error")
           Thread.sleep(5000)
           actorSystem.terminate()
       }

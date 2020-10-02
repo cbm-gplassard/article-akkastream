@@ -33,4 +33,4 @@ assemblyMergeStrategy in assembly := {
   case _ => MergeStrategy.first
 }
 
-mainClass := Some("fr.glc.guardians.scripts.fixups3.App")
+mainClass := Some("fr.glc.articles.akkastream.Main")
