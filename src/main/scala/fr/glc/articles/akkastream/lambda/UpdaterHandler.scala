@@ -45,12 +45,12 @@ object UpdaterHandler {
     println(s"Start $state")
 
     val throttle = Try(
-      Await.result(izanamiConfig.config("article:GUARDIANS:akkastream:settings").map(json => (json \ "throttle").as[Int]), 1 second)
+      Await.result(izanamiConfig.config("article:GUARDIANS:akkastream:settings").map(json => (json \ "throttle").as[Int]), 5 second)
     ) match {
       case Success(value) => value
       case Failure(error) =>
         println("Could not retrieve throttle from izanami, using default value", error)
-        100
+        50
     }
 
     val result = dynamoUpdater.updateDynamo(System.getenv("TABLE_NAME"), Option(state), throttle)

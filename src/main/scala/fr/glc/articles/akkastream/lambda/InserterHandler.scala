@@ -8,8 +8,8 @@ import fr.glc.articles.akkastream.services.DynamoInserter
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 
-import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext}
 
 object InserterHandler {
   private implicit val actorSystem: ActorSystem = ActorSystem()

@@ -4,7 +4,7 @@ import * as lambda from '@aws-cdk/aws-lambda';
 import * as tasks from '@aws-cdk/aws-stepfunctions-tasks';
 import {CfnParameter, Duration} from "@aws-cdk/core";
 import {Vpc, PrivateSubnet} from "@aws-cdk/aws-ec2";
-import {Choice, Condition, StateMachine, Succeed} from "@aws-cdk/aws-stepfunctions";
+import {Choice, Condition, StateMachine, Succeed, Map} from "@aws-cdk/aws-stepfunctions";
 
 export class CdkStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props: cdk.StackProps) {
@@ -80,20 +80,37 @@ export class CdkStack extends cdk.Stack {
     dynamodb.grantReadData(updateLambda);
     dynamodb.grantWriteData(updateLambda);
 
+    const listTasksLambda = new lambda.Function(this, 'listTasksLambda', {
+      runtime: lambda.Runtime.JAVA_8,
+      code: lambda.Code.fromAsset('target/scala-2.13/article-akkastream-assembly-0.1.jar'),
+      handler: 'fr.glc.articles.akkastream.lambda.ListTasks::handler',
+      functionName: "akkastream-ListTasks",
+      timeout: Duration.minutes(1),
+      memorySize: 256
+    });
+
     /**
      * Step function
      */
     const updateTask = new tasks.LambdaInvoke(this, "UpdateDynamoTask", {lambdaFunction: updateLambda, outputPath: "$.Payload"})
 
-    const definition = updateTask.next(new Choice(this, "IsFinished")
+    // Each task is made of a cycle which repeats itself until the "finished" flag is set to true
+    const updateCycle = updateTask.next(new Choice(this, "IsFinished")
         .when(Condition.booleanEquals("$.finished", true), new Succeed(this, "Success"))
         .otherwise(updateTask)
     );
+
+    // This lambda will generate multiple elements to be treated in parallel by the UpdateDynamoTask
+    const definition = new tasks.LambdaInvoke(this, "SplitTasks", {lambdaFunction: listTasksLambda, outputPath: "$.Payload"})
+        .next(
+            new Map(this, "MapTask", {maxConcurrency: 10})
+              .iterator(updateCycle)
+        );
+
 
     new StateMachine(this, 'UpdateDynamoStateMachine', {
       definition,
       stateMachineName: "akkastream-update"
     });
-
   }
 }

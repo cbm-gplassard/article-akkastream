@@ -1,7 +1,6 @@
 package fr.glc.articles.akkastream.services
 
 import java.time.Instant
-import java.util.concurrent.atomic.AtomicInteger
 
 import akka.actor.ActorSystem
 import akka.stream.Attributes.LogLevels
@@ -10,8 +9,7 @@ import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.stream.{Attributes, KillSwitches, ThrottleMode}
 import fr.glc.articles.akkastream.Utils
 import fr.glc.articles.akkastream.model.UpdateState
-import izanami.Strategy.CacheWithSseStrategy
-import izanami.scaladsl.{ConfigClient, IzanamiClient}
+import izanami.scaladsl.ConfigClient
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model._
 
@@ -43,13 +41,23 @@ class DynamoUpdater(izanami: ConfigClient, implicit val actorSystem: ActorSystem
       case _ => null
     }
     val updateParallelism = 1
+    val segment = previousState.map(_.segment).getOrElse(0)
+    val totalSegments = previousState.map(_.totalSegments).getOrElse(1)
 
     val (killSwitch, result) = Source
-      .single(ScanRequest.builder().tableName(tableName).exclusiveStartKey(startKey).limit(1000).returnConsumedCapacity(ReturnConsumedCapacity.TOTAL).build())
+      .single(ScanRequest.builder()
+        .tableName(tableName)
+        .exclusiveStartKey(startKey)
+        .limit(1000)
+        .returnConsumedCapacity(ReturnConsumedCapacity.TOTAL)
+        .segment(segment)
+        .totalSegments(totalSegments)
+        .build()
+      )
       .via(DynamoDb.flowPaginated())
       .log("ScanResult", e => (e.consumedCapacity(), e.items().size()))
       .throttle(baseThrottle, 1 second, baseThrottle, item => item.consumedCapacity().readCapacityUnits().toInt, ThrottleMode.Shaping)
-      .takeWithin(1 minutes)
+      .takeWithin(3 minutes)
       .viaMat(KillSwitches.single)(Keep.right)
       .mapAsync(updateParallelism){ scanResponse =>
         updateItems(tableName, scanResponse, baseThrottle / updateParallelism)
@@ -60,19 +68,16 @@ class DynamoUpdater(izanami: ConfigClient, implicit val actorSystem: ActorSystem
       .toMat(Sink.last)(Keep.both)
       .run()
 
-    izanami.onConfigChanged("article:GUARDIANS:akkastream:settings") { payload =>
+    val subscription = izanami.onConfigChanged("article:GUARDIANS:akkastream:settings") { payload =>
       println("Config changed", payload)
       if ((payload \ "abort").as[Boolean]) {
         println("Aborting")
         killSwitch.abort(new RuntimeException("Aborting"))
       }
-      if ((payload \ "stop").as[Boolean]) {
-        println("Stopping")
-        killSwitch.shutdown()
-      }
     }
 
     result
+      .andThen(_ => subscription.close())
   }
 
 }

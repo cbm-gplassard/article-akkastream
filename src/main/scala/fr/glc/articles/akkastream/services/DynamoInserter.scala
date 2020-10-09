@@ -2,12 +2,10 @@ package fr.glc.articles.akkastream.services
 
 import java.time.Instant
 
-import akka.NotUsed
 import akka.actor.ActorSystem
-import akka.stream.Attributes.LogLevels
+import akka.stream.ThrottleMode
 import akka.stream.alpakka.dynamodb.scaladsl.DynamoDb
-import akka.stream.scaladsl.{Flow, Sink, Source}
-import akka.stream.{Attributes, ThrottleMode}
+import akka.stream.scaladsl.{Sink, Source}
 import fr.glc.articles.akkastream.Utils
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model._
