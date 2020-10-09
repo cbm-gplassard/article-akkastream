@@ -8,6 +8,7 @@ import fr.glc.articles.akkastream.services.DynamoUpdater
 import fr.glc.articles.akkastream.services.DynamoInserter
 import izanami.ClientConfig
 import izanami.IzanamiBackend.SseBackend
+import izanami.Strategy.CacheWithSseStrategy
 import izanami.scaladsl.IzanamiClient
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
@@ -43,10 +44,11 @@ object Main {
         zoneId = ZoneId.of("Europe/Paris")
       )
     )
+    val izanamiConfig = izanami.configClient(CacheWithSseStrategy(Seq("article")))
     actorSystem.registerOnTermination(akkaHttpClient.close())
     actorSystem.registerOnTermination(dynamodb.close())
 
-    val dynamoUpdater = new DynamoUpdater(izanami, actorSystem, dynamodb)
+    val dynamoUpdater = new DynamoUpdater(izanamiConfig, actorSystem, dynamodb)
     val dynamoInserter = new DynamoInserter()(actorSystem, dynamodb)
 
     val start = Instant.now()

@@ -1,8 +1,10 @@
 import * as cdk from '@aws-cdk/core';
 import {AttributeType, BillingMode, Table} from '@aws-cdk/aws-dynamodb';
 import * as lambda from '@aws-cdk/aws-lambda';
+import * as tasks from '@aws-cdk/aws-stepfunctions-tasks';
 import {CfnParameter, Duration} from "@aws-cdk/core";
 import {Vpc, PrivateSubnet} from "@aws-cdk/aws-ec2";
+import {Choice, Condition, StateMachine, Succeed} from "@aws-cdk/aws-stepfunctions";
 
 export class CdkStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props: cdk.StackProps) {
@@ -77,5 +79,21 @@ export class CdkStack extends cdk.Stack {
     dynamodb.grantWriteData(insertLambda);
     dynamodb.grantReadData(updateLambda);
     dynamodb.grantWriteData(updateLambda);
+
+    /**
+     * Step function
+     */
+    const updateTask = new tasks.LambdaInvoke(this, "UpdateDynamoTask", {lambdaFunction: updateLambda, outputPath: "$.Payload"})
+
+    const definition = updateTask.next(new Choice(this, "IsFinished")
+        .when(Condition.booleanEquals("$.finished", true), new Succeed(this, "Success"))
+        .otherwise(updateTask)
+    );
+
+    new StateMachine(this, 'UpdateDynamoStateMachine', {
+      definition,
+      stateMachineName: "akkastream-update"
+    });
+
   }
 }

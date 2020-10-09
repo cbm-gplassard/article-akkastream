@@ -1,5 +1,6 @@
 package fr.glc.articles.akkastream
 
+import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import org.scalatest.matchers.must.Matchers
@@ -75,6 +76,20 @@ class Samples extends AnyWordSpec with Matchers {
 
       Await.result(source.via(flow).runWith(sink), 1 second) must equal(Seq("1", "2", "3"))
     }
+  }
+
+  "Connect elements" should {
+    val sink = Sink.seq[String]
+
+    "source with flow" in {
+      val source = Source(1 to 3)
+      val flow = Flow[Int].map(_.toString)
+
+      val newSource: Source[String, NotUsed] = source.via(flow)
+
+      Await.result(newSource.runWith(sink), 1 second) must equal(Seq("1", "2", "3"))
+    }
+
   }
 
 }
