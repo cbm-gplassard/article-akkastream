@@ -1,6 +1,7 @@
 # Article akka-streams
 
-Sources du projet ayant servi d'exemple pour l'article sur le blog FIXME.
+Sources du projet ayant servi d'exemple pour l'article sur le blog technique du Groupe La Centrale 
+https://tech.carboatmedia.fr/2020/11/02/akka-streams/.
 
 Le projet consiste en 2 jobs
 * le premier [DynamoInserter](src/main/scala/fr/glc/articles/akkastream/services/DynamoInserter.scala) permet de créer
